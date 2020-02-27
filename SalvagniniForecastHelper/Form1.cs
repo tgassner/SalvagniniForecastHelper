@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.IO.Packaging;
 using System.Linq;
@@ -141,13 +142,18 @@ namespace SalvagniniForecastHelper
             {
                 masterData = readMasterData();
             }
-            catch (IOException e) {
+            catch (IOException e)
+            {
                 MessageBox.Show("Error While opening the File!\r\n" + e.Message);
+                this.result = null;
+                restoreGui();
                 return;
             }
 
             if (masterData == null)
             {
+                this.result = null;
+                restoreGui();
                 return;
             }
 
@@ -169,7 +175,9 @@ namespace SalvagniniForecastHelper
                 if (masterData.ContainsKey(forecastLine.ArtikelNr.ToUpper()))
                 {
                     masterDataLine = masterData[forecastLine.ArtikelNr.ToUpper()];
-                } else {
+                }
+                else
+                {
                     string artNr = forecastLine.ArtikelNr.Substring(1, forecastLine.ArtikelNr.Length - 3).ToUpper();
                     if (masterData.ContainsKey(artNr))
                     {
@@ -211,6 +219,11 @@ namespace SalvagniniForecastHelper
 
             this.result = result;
 
+            restoreGui();
+        }
+
+        private void restoreGui()
+        {
             buttonGo.Enabled = true;
             buttonOpenMasterDataFile.Enabled = true;
             buttonForeCastFile.Enabled = true;
@@ -369,19 +382,19 @@ namespace SalvagniniForecastHelper
 
                             if (cellLength != null)
                             {
-                                double.TryParse(GetCellValue(cellLength), out d);
+                                double.TryParse(GetCellValue(cellLength), NumberStyles.Number, CultureInfo.CreateSpecificCulture("en-US"), out d);
                                 masterDataLine.Length = d;
                             }
 
                             if (cellWidth != null)
                             {
-                                double.TryParse(GetCellValue(cellWidth), out d);
+                                double.TryParse(GetCellValue(cellWidth), NumberStyles.Number, CultureInfo.CreateSpecificCulture("en-US"), out d);
                                 masterDataLine.Width = d;
                             }
 
                             if (cellThickness != null)
                             {
-                                double.TryParse(GetCellValue(cellThickness), out d);
+                                double.TryParse(GetCellValue(cellThickness), NumberStyles.Number, CultureInfo.CreateSpecificCulture("en-US"), out d);
                                 masterDataLine.Thickness = d;
                             }
 
@@ -466,32 +479,6 @@ namespace SalvagniniForecastHelper
             }
 
             string value = cell.InnerText;
-
-            int i = 1;
-
-            if (i == 2)
-            {
-                OpenXmlElement parent = cell.Parent;
-                while (parent.Parent != null && parent.Parent != parent
-                        && string.Compare(parent.LocalName, "worksheet", true) != 0)
-                {
-                    parent = parent.Parent;
-                }
-                if (string.Compare(parent.LocalName, "worksheet", true) != 0)
-                {
-                    throw new Exception("Unable to find parent worksheet.");
-                }
-
-                Worksheet ws = parent as Worksheet;
-                SpreadsheetDocument ssDoc = ws.WorksheetPart.OpenXmlPackage as SpreadsheetDocument;
-                SharedStringTablePart sstPart = ssDoc.WorkbookPart.GetPartsOfType<SharedStringTablePart>().FirstOrDefault();
-
-                // lookup value in shared string table
-                if (sstPart != null && sstPart.SharedStringTable != null)
-                {
-                    value = sstPart.SharedStringTable.ElementAt(int.Parse(value)).InnerText;
-                }
-            }
 
             if (cell.DataType == null)
             {
@@ -671,6 +658,12 @@ namespace SalvagniniForecastHelper
 
         private void buttonCopyToClipboardForExcelPaste_Click(object sender, EventArgs e)
         {
+            if (this.result == null)
+            {
+                MessageBox.Show("there is no result! please calculate first");
+                return;
+            }
+            
             string s = "ArtikelNrForecast\tArtikelNrMasterData\tQuantities\tQuantity Sum\tLength\tWidth\tThickness\r\n";
 
             foreach (ResultLine value in result)
